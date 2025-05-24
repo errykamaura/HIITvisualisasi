@@ -1,0 +1,6 @@
+streamlit
+requests
+pymongo
+python-dotenv
+matplotlib
+pandas
