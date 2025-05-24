@@ -9,7 +9,12 @@ from dotenv import load_dotenv
 
 # Load .env
 load_dotenv()
+# Ambil MONGO_URI dari environment variable atau .env
 MONGO_URI = os.getenv("MONGO_URI")
+
+if not MONGO_URI:
+    st.error("MONGO_URI tidak ditemukan di environment variable atau file .env!")
+    st.stop()
 
 # Koneksi MongoDB
 client = MongoClient(MONGO_URI)
