@@ -1,29 +1,32 @@
 import streamlit as st
+import requests
+from datetime import datetime
 from pymongo import MongoClient
-import pandas as pd
-import matplotlib.pyplot as plt
 import os
 from dotenv import load_dotenv
 from pathlib import Path
+import matplotlib.pyplot as plt
+import pandas as pd
 
-# Load .env dari folder file ini berada
-env_path = Path(__file__).parent / '.env'
+# === Koneksi MongoDB ===
+env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
-# Ambil MONGO_URI dari environment variable atau .env
-MONGO_URI = os.getenv("MONGO_URI")
+mongo_uri = os.getenv("MONGODB_URI")
+print("DEBUG MONGODB_URI:", mongo_uri)
 
-# Debug: tampilkan nilai MONGO_URI
-st.write(f"MONGO_URI = {MONGO_URI}")
-
-if not MONGO_URI:
-    st.error("MONGO_URI tidak ditemukan di environment variable atau file .env!")
+if not mongo_uri:
+    st.error("❌ MONGODB_URI tidak ditemukan!")
     st.stop()
 
-# Koneksi MongoDB
-client = MongoClient(MONGO_URI)
-db = client['capstone']
-collection = db['visualisasi2']
+try:
+    client = MongoClient(mongo_uri)
+    db = client["capstone"]
+    collection = db["exercises"]
+    print("✅ BERHASIL konek ke MongoDB Atlas")
+except Exception as e:
+    st.error(f"❌ Gagal konek ke MongoDB: {e}")
+    st.stop()
 
 # === Fungsi Sinkronisasi Data ===
 def sync_exercise_data():
@@ -94,7 +97,6 @@ if st.button("📋 Tampilkan Semua Latihan"):
         st.warning("Belum ada data latihan tersimpan.")
 
 # === Visualisasi Data ===
-# === Visualisasi Data ===
 st.header("📊 Visualisasi Data Latihan")
 
 if st.button("📈 Tampilkan Visualisasi"):
@@ -104,81 +106,44 @@ if st.button("📈 Tampilkan Visualisasi"):
     else:
         df = pd.DataFrame(data)
 
-        # Pastikan kolom ada
-        if 'category_name' not in df.columns or 'equipment_names' not in df.columns or 'muscle_names' not in df.columns:
-            st.error("Data belum lengkap: Pastikan semua kolom (category_name, equipment_names, muscle_names) tersedia.")
-        else:
-            # Visualisasi 1: Latihan per Kategori
-            st.subheader("Jumlah Latihan per Kategori")
-            kategori_count = df['category_name'].value_counts().reset_index()
-            kategori_count.columns = ['Kategori', 'Jumlah Latihan']
+        # Visualisasi 1: Latihan per Kategori
+        st.subheader("Jumlah Latihan per Kategori")
+        kategori_count = df['category_name'].value_counts()
+        fig1, ax1 = plt.subplots(figsize=(10, 5))
+        kategori_count.plot(kind='bar', ax=ax1, color='skyblue')
+        ax1.set_title("Distribusi Latihan Berdasarkan Kategori")
+        ax1.set_xlabel("Kategori")
+        ax1.set_ylabel("Jumlah Latihan")
+        ax1.tick_params(axis='x', rotation=45)
+        plt.tight_layout()
+        st.pyplot(fig1)
 
-            # Tabel rapi
-            st.dataframe(
-                kategori_count.style.set_properties(**{'text-align': 'center'}).set_table_styles([{
-                    'selector': 'th',
-                    'props': [('text-align', 'center')]
-                }])
-            )
+        st.markdown("---")
 
-            # Grafik
-            fig1, ax1 = plt.subplots(figsize=(10, 5))
-            kategori_count.set_index('Kategori')['Jumlah Latihan'].plot(kind='bar', ax=ax1, color='skyblue')
-            ax1.set_title("Distribusi Latihan Berdasarkan Kategori")
-            ax1.set_xlabel("Kategori")
-            ax1.set_ylabel("Jumlah Latihan")
-            ax1.tick_params(axis='x', rotation=45)
-            plt.tight_layout()
-            st.pyplot(fig1)
+        # Visualisasi 2: Latihan per Peralatan
+        st.subheader("Jumlah Latihan per Peralatan (Top 10)")
+        equipment_series = df['equipment_names'].explode()
+        equipment_count = equipment_series.value_counts()
+        fig2, ax2 = plt.subplots(figsize=(10, 5))
+        equipment_count.head(10).plot(kind='bar', ax=ax2, color='orange')
+        ax2.set_title("Top 10 Peralatan yang Digunakan")
+        ax2.set_xlabel("Peralatan")
+        ax2.set_ylabel("Jumlah Latihan")
+        ax2.tick_params(axis='x', rotation=45)
+        plt.tight_layout()
+        st.pyplot(fig2)
 
-            st.markdown("---")
+        st.markdown("---")
 
-            # Visualisasi 2: Latihan per Peralatan (Top 10)
-            st.subheader("Jumlah Latihan per Peralatan (Top 10)")
-            equipment_series = df['equipment_names'].explode()
-            equipment_count = equipment_series.value_counts().head(10).reset_index()
-            equipment_count.columns = ['Peralatan', 'Jumlah Latihan']
-
-            # Tabel rapi
-            st.dataframe(
-                equipment_count.style.set_properties(**{'text-align': 'center'}).set_table_styles([{
-                    'selector': 'th',
-                    'props': [('text-align', 'center')]
-                }])
-            )
-
-            # Grafik
-            fig2, ax2 = plt.subplots(figsize=(10, 5))
-            equipment_count.set_index('Peralatan')['Jumlah Latihan'].plot(kind='bar', ax=ax2, color='orange')
-            ax2.set_title("Top 10 Peralatan yang Digunakan")
-            ax2.set_xlabel("Peralatan")
-            ax2.set_ylabel("Jumlah Latihan")
-            ax2.tick_params(axis='x', rotation=45)
-            plt.tight_layout()
-            st.pyplot(fig2)
-
-            st.markdown("---")
-
-            # Visualisasi 3: Latihan per Otot Utama (Top 10)
-            st.subheader("Jumlah Latihan per Otot Utama (Top 10)")
-            muscle_series = df['muscle_names'].explode()
-            muscle_count = muscle_series.value_counts().head(10).reset_index()
-            muscle_count.columns = ['Otot Utama', 'Jumlah Latihan']
-
-            # Tabel rapi
-            st.dataframe(
-                muscle_count.style.set_properties(**{'text-align': 'center'}).set_table_styles([{
-                    'selector': 'th',
-                    'props': [('text-align', 'center')]
-                }])
-            )
-
-            # Grafik
-            fig3, ax3 = plt.subplots(figsize=(10, 5))
-            muscle_count.set_index('Otot Utama')['Jumlah Latihan'].plot(kind='bar', ax=ax3, color='green')
-            ax3.set_title("Top 10 Otot Utama yang Dilatih")
-            ax3.set_xlabel("Otot")
-            ax3.set_ylabel("Jumlah Latihan")
-            ax3.tick_params(axis='x', rotation=45)
-            plt.tight_layout()
-            st.pyplot(fig3)
+        # Visualisasi 3: Latihan per Otot Utama
+        st.subheader("Jumlah Latihan per Otot Utama (Top 10)")
+        muscle_series = df['muscle_names'].explode()
+        muscle_count = muscle_series.value_counts()
+        fig3, ax3 = plt.subplots(figsize=(10, 5))
+        muscle_count.head(10).plot(kind='bar', ax=ax3, color='green')
+        ax3.set_title("Top 10 Otot Utama yang Dilatih")
+        ax3.set_xlabel("Otot")
+        ax3.set_ylabel("Jumlah Latihan")
+        ax3.tick_params(axis='x', rotation=45)
+        plt.tight_layout()
+        st.pyplot(fig3)
