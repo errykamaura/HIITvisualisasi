@@ -1,16 +1,20 @@
 import streamlit as st
-import requests
 from pymongo import MongoClient
-from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
-# Load .env
-load_dotenv()
+# Load .env dari folder file ini berada
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path)
+
 # Ambil MONGO_URI dari environment variable atau .env
 MONGO_URI = os.getenv("MONGO_URI")
+
+# Debug: tampilkan nilai MONGO_URI
+st.write(f"MONGO_URI = {MONGO_URI}")
 
 if not MONGO_URI:
     st.error("MONGO_URI tidak ditemukan di environment variable atau file .env!")
