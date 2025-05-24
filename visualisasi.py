@@ -13,7 +13,10 @@ env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 mongo_uri = os.getenv("MONGODB_URI")
-print("DEBUG MONGODB_URI:", mongo_uri)
+
+# Jika tidak ada di env, coba ambil dari Streamlit secrets (untuk deploy)
+if not mongo_uri:
+    mongo_uri = st.secrets.get("MONGODB_URI")
 
 if not mongo_uri:
     st.error("❌ MONGODB_URI tidak ditemukan!")
